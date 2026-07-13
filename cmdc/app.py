@@ -5,8 +5,10 @@ import os
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 import rumps
+from Foundation import NSObject
 
 log = logging.getLogger("cmdc")
 
@@ -18,6 +20,15 @@ ICON_BUSY = "⌘…"
 ICON_OK = "⌘✓"
 ICON_ERR = "⌘✗"
 ICON_OFF = "⌘×"
+LOG_PATH = Path(os.environ.get("CMDC_LOG_PATH", "/tmp/cmdc.log"))
+
+
+class _PromptTextDelegate(NSObject):
+    def control_textView_doCommandBySelector_(self, _control, text_view, command):
+        if command == "insertNewline:":
+            text_view.insertNewlineIgnoringFieldEditor_(None)
+            return True
+        return False
 
 
 class CmdCApp(rumps.App):
@@ -31,6 +42,7 @@ class CmdCApp(rumps.App):
             actions={"c": self._on_triple_copy},
             count=self.cfg["trigger_count"],
             window=self.cfg["trigger_window_sec"],
+            on_progress=self._on_hotkey_progress,
         )
         self.listener.start()
         log.info("ready: provider=%s model=%s enabled=%s",
@@ -59,6 +71,7 @@ class CmdCApp(rumps.App):
         )
         self.item_subs.state = self.cfg["substitutions_enabled"]
         self.item_cfg = rumps.MenuItem("Open Config File", callback=self._open_config)
+        self.item_log = rumps.MenuItem("Open Log File", callback=self._open_log)
 
         self.menu = [
             self.item_enabled,
@@ -70,6 +83,7 @@ class CmdCApp(rumps.App):
             None,
             self.item_subs,
             self.item_cfg,
+            self.item_log,
             None,
         ]
 
@@ -78,6 +92,10 @@ class CmdCApp(rumps.App):
 
     def _sync_idle_icon(self):
         self.title = ICON_IDLE if self.cfg["enabled"] else ICON_OFF
+
+    def _sync_idle_icon_if_ready(self):
+        if not self._busy.locked():
+            self._sync_idle_icon()
 
     def _toggle_enabled(self, item):
         self.cfg["enabled"] = not self.cfg["enabled"]
@@ -135,8 +153,11 @@ class CmdCApp(rumps.App):
             default_text=self.cfg["system_prompt"],
             ok="Save",
             cancel="Cancel",
-            dimensions=(420, 140),
+            dimensions=(680, 360),
         )
+        prompt_delegate = _PromptTextDelegate.alloc().init()
+        win._textfield.setDelegate_(prompt_delegate)
+        win._prompt_text_delegate = prompt_delegate
         resp = win.run()
         if resp.clicked and resp.text.strip():
             self.cfg["system_prompt"] = resp.text.strip()
@@ -150,7 +171,18 @@ class CmdCApp(rumps.App):
     def _open_config(self, _):
         subprocess.run(["open", str(config.CONFIG_PATH)])
 
+    def _open_log(self, _):
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        LOG_PATH.touch(exist_ok=True)
+        subprocess.run(["open", str(LOG_PATH)])
+
     # ---------- correction flow ----------
+
+    def _on_hotkey_progress(self, _vk, press_count: int, _target_count: int):
+        if not self.cfg["enabled"] or self._busy.locked():
+            return
+        self.title = f"⌘{press_count}"
+        threading.Timer(0.35, self._sync_idle_icon_if_ready).start()
 
     def _on_triple_copy(self):
         if not self.cfg["enabled"]:
@@ -258,12 +290,17 @@ def _check_permissions() -> bool:
 
 
 def main():
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=logging.DEBUG if os.environ.get("CMDC_DEBUG") else logging.INFO,
         format="%(asctime)s %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
+        handlers=[
+            logging.FileHandler(LOG_PATH),
+            logging.StreamHandler(),
+        ],
     )
-    log.info("cmdc starting")
+    log.info("cmdc starting (log=%s)", LOG_PATH)
     _check_permissions()
     CmdCApp().run()
 

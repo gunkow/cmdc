@@ -15,6 +15,10 @@ DEFAULT_PROMPT = (
     "Output ONLY the corrected text — no explanations, no quotes around it."
 )
 
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_GEMINI_THINKING_CONFIG = {"thinkingLevel": "minimal"}
+LEGACY_GEMINI_DEFAULT_MODELS = {"gemini-2.5-flash"}
+
 # Provider templates. Placeholders {api_key} {model} {system_prompt} {text}
 # are substituted into url/headers/body strings. response_path is a
 # dot-separated path into the response JSON (ints = list indices).
@@ -66,10 +70,13 @@ DEFAULTS = {
             "body": {
                 "system_instruction": {"parts": [{"text": "{system_prompt}"}]},
                 "contents": [{"parts": [{"text": "{text}"}]}],
-                "generationConfig": {"temperature": 0.2},
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "thinkingConfig": DEFAULT_GEMINI_THINKING_CONFIG,
+                },
             },
             "response_path": "candidates.0.content.parts.0.text",
-            "default_model": "gemini-2.5-flash",
+            "default_model": DEFAULT_GEMINI_MODEL,
             "api_key_env": "GEMINI_API_KEY",
         },
         "anthropic": {
@@ -103,13 +110,37 @@ def _merge(base: dict, override: dict) -> dict:
     return out
 
 
+def _migrate(cfg: dict) -> bool:
+    changed = False
+    gemini = cfg.get("providers", {}).get("gemini")
+    if isinstance(gemini, dict):
+        if gemini.get("default_model") in LEGACY_GEMINI_DEFAULT_MODELS:
+            gemini["default_model"] = DEFAULT_GEMINI_MODEL
+            changed = True
+
+        body = gemini.get("body")
+        generation_config = body.get("generationConfig") if isinstance(body, dict) else None
+        if isinstance(generation_config, dict):
+            thinking_config = generation_config.get("thinkingConfig")
+            if thinking_config != DEFAULT_GEMINI_THINKING_CONFIG:
+                generation_config["thinkingConfig"] = copy.deepcopy(
+                    DEFAULT_GEMINI_THINKING_CONFIG
+                )
+                changed = True
+
+    return changed
+
+
 def load() -> dict:
     if CONFIG_PATH.exists():
         try:
             user = json.loads(CONFIG_PATH.read_text())
         except (json.JSONDecodeError, OSError):
             user = {}
-        return _merge(DEFAULTS, user)
+        cfg = _merge(DEFAULTS, user)
+        if _migrate(cfg):
+            save(cfg)
+        return cfg
     cfg = copy.deepcopy(DEFAULTS)
     save(cfg)
     return cfg

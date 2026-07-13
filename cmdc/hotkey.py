@@ -24,11 +24,18 @@ _CMD_KEYS = {
 class MultiPressListener:
     """Fires callbacks when Cmd+<letter> is pressed `count` times within `window` sec."""
 
-    def __init__(self, actions: dict, count: int = 3, window: float = 1.0):
+    def __init__(
+        self,
+        actions: dict,
+        count: int = 3,
+        window: float = 1.0,
+        on_progress=None,
+    ):
         # actions: {"c": callback, "d": callback}
         self.actions = {VK[k]: cb for k, cb in actions.items()}
         self.count = count
         self.window = window
+        self.on_progress = on_progress
         self._cmd_down = False
         self._times: dict[int, list[float]] = {vk: [] for vk in self.actions}
         self._listener = keyboard.Listener(
@@ -56,6 +63,8 @@ class MultiPressListener:
         times = [t for t in self._times[vk] if now - t <= self.window]
         times.append(now)
         log.info("Cmd press detected (vk=%s) %d/%d", vk, len(times), self.count)
+        if self.on_progress:
+            self.on_progress(vk, len(times), self.count)
         if len(times) >= self.count:
             self._times[vk] = []
             log.info("trigger fired (vk=%s)", vk)

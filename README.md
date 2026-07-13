@@ -13,6 +13,7 @@ sequenceDiagram
 
     U->>A: select text
     U->>A: Cmd+C ×3 (within 1s)
+    C->>C: icon pulses ⌘1 → ⌘2
     Note over C: passive global key listener<br/>detects the triple press
     A-->>C: text lands on clipboard (normal Cmd+C)
     C->>C: icon ⓒ → ⋯
@@ -43,6 +44,12 @@ Restart cmdc after granting.
 
 Picked up automatically from env (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` — already loaded by your Bitwarden shell setup), or set per provider via the menu bar → *Set API Key…* (stored in `~/.config/cmdc/config.json`, chmod 600).
 
+Gemini defaults to `gemini-3.5-flash`. Existing configs that still have the
+old bundled Gemini default (`gemini-2.5-flash`) are migrated on app startup.
+For this correction flow, the built-in Gemini template sets
+`thinkingConfig.thinkingLevel` to `minimal`, which is the Gemini 3.x setting
+optimized for short, low-latency responses.
+
 ## Menu bar
 
 | Item | What it does |
@@ -54,6 +61,7 @@ Picked up automatically from env (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC
 | **Edit Prompt…** | the system prompt sent with your text |
 | **Replace symbols** | post-process: `—` `–` → `-`, curly quotes → straight, `…` → `...` |
 | **Open Config File** | full config in your editor |
+| **Open Log File** | recent app events and correction errors from `/tmp/cmdc.log` |
 
 ## Custom / any AI provider
 
@@ -94,7 +102,7 @@ echo "some text" | uv run cmdc-fix
 ## Installed as /Applications/cmdc.app
 
 A thin wrapper bundle: a tiny compiled launcher (`Contents/MacOS/cmdc`) that
-`exec`s `uv run --project ~/work/sand/cmdc cmdc`. The Python code stays
+`exec`s `uv run --project ~/work/cmdc cmdc`. The Python code stays
 editable here — restart the app to pick up changes:
 
 ```bash
