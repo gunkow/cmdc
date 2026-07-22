@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import tempfile
 from pathlib import Path
 
 CONFIG_DIR = Path.home() / ".config" / "cmdc"
@@ -134,7 +135,7 @@ def _migrate(cfg: dict) -> bool:
 def load() -> dict:
     if CONFIG_PATH.exists():
         try:
-            user = json.loads(CONFIG_PATH.read_text())
+            user = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             user = {}
         cfg = _merge(DEFAULTS, user)
@@ -148,8 +149,18 @@ def load() -> dict:
 
 def save(cfg: dict) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False))
-    os.chmod(CONFIG_PATH, 0o600)  # may hold API keys
+    fd, temporary_name = tempfile.mkstemp(prefix=".config-", dir=CONFIG_DIR)
+    temporary_path = Path(temporary_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as temporary_file:
+            json.dump(cfg, temporary_file, indent=2, ensure_ascii=False)
+            temporary_file.write("\n")
+            temporary_file.flush()
+            os.fsync(temporary_file.fileno())
+        os.replace(temporary_path, CONFIG_PATH)
+        os.chmod(CONFIG_PATH, 0o600)  # may hold API keys
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def model_for(cfg: dict) -> str:

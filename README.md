@@ -53,6 +53,56 @@ launching cmdc:
 When cmdc is launched from Finder or Login Items, shell environment variables
 may not be available. In that case, save the key through the menu bar.
 
+## Build the macOS application
+
+The checked-in py2app recipe creates a native menu-bar application that can be
+opened from Finder, Launchpad, or Login Items:
+
+```bash
+cd macos
+BUILD_DIR="$(mktemp -d /tmp/cmdc-app.XXXXXX)"
+PYTHON_BIN="${PYTHON_BIN:-$(brew --prefix python)/bin/python3}"
+uv run --python "$PYTHON_BIN" --no-cache \
+  --with py2app --with-editable .. \
+  python setup.py py2app \
+  --dist-dir "$BUILD_DIR/dist" \
+  --bdist-base "$BUILD_DIR/build"
+codesign --force --deep --sign - "$BUILD_DIR/dist/cmdc.app"
+open "$BUILD_DIR/dist"
+```
+
+The default uses Homebrew's Python on both Apple Silicon and Intel Macs.
+`PYTHON_BIN` must point to a Python 3.11+ framework build that py2app can bundle;
+override it when Homebrew Python is not the intended packaging interpreter.
+
+Drag `cmdc.app` from the opened build directory into **Applications**. Quit any
+existing copy before replacing it. The ad-hoc signature is suitable for a local
+build; distributing the app to other Macs requires a Developer ID signature and
+notarization. Replacing an ad-hoc-signed local build can also change its macOS
+privacy identity; if the trigger stops working, remove and re-enable cmdc under
+Input Monitoring and Accessibility.
+
+The recipe deliberately includes a few details that prevent subtle Finder and
+Launchpad failures:
+
+- `LSUIElement` makes cmdc a menu-bar app while still allowing API-key and prompt
+  dialogs to become active and accept keyboard input. `LSBackgroundOnly` must not
+  be used for an interactive menu-bar app.
+- Permission checks only preflight Input Monitoring and Accessibility at startup.
+  Requesting permissions or showing a modal alert before the event loop starts can
+  leave the app running with no visible menu.
+- `pynput` and `charset_normalizer` are collected explicitly because their dynamic
+  or compiled helper modules are not always discovered by py2app automatically.
+- The launcher is named `launcher.py` and its bundle entry point is named `cmdc`;
+  naming the source file `cmdc.py` would shadow the real `cmdc` package.
+- `--no-cache --with-editable ..` prevents uv from reusing a stale local wheel while
+  iterating on the application source.
+- Configuration files are always read and written as UTF-8 because apps launched
+  by Finder can start with a different locale from an interactive shell.
+
+After the first launch, open cmdc's **Permissions required** menu and enable cmdc
+in both macOS privacy panes. Restart the app after changing either permission.
+
 ## Usage
 
 1. Select text in any application.
@@ -65,6 +115,7 @@ may not be available. In that case, save the key through the menu bar.
 | Item | Description |
 |---|---|
 | **Enabled** | Enables or disables the global trigger. |
+| **Permissions required** | Opens the Input Monitoring and Accessibility privacy panes when either permission is missing. |
 | **Provider** | Selects OpenAI, Gemini, Anthropic, or a configured custom provider. |
 | **Model: …** | Overrides the provider's default model. Leave it empty to use the default. |
 | **Set API Key…** | Saves an API key for the selected provider. |
@@ -198,9 +249,10 @@ The project is intentionally small:
 | `cmdc/config.py` | Defaults, persistence, migrations, and provider templates. |
 | `cmdc/cli.py` | Command-line entry point. |
 
-Run a basic source check with:
+Run the regression tests and basic source checks with:
 
 ```bash
+uv run python -m unittest discover -s tests -v
 uv run python -m compileall cmdc
 git diff --check
 ```

@@ -32,8 +32,9 @@ class _PromptTextDelegate(NSObject):
 
 
 class CmdCApp(rumps.App):
-    def __init__(self):
+    def __init__(self, permissions_ok: bool = True):
         super().__init__("cmdc", title=ICON_IDLE, quit_button="Quit")
+        self.permissions_ok = permissions_ok
         self.cfg = config.load()
         self._busy = threading.Lock()
         self._build_menu()
@@ -55,6 +56,16 @@ class CmdCApp(rumps.App):
         self.item_enabled = rumps.MenuItem("Enabled", callback=self._toggle_enabled)
         self.item_enabled.state = self.cfg["enabled"]
 
+        self.permissions_menu = rumps.MenuItem("Permissions required")
+        self.permissions_menu.add(
+            rumps.MenuItem(
+                "Open Input Monitoring…", callback=self._open_input_monitoring
+            )
+        )
+        self.permissions_menu.add(
+            rumps.MenuItem("Open Accessibility…", callback=self._open_accessibility)
+        )
+
         self.provider_menu = rumps.MenuItem("Provider")
         for name in self.cfg["providers"]:
             item = rumps.MenuItem(name, callback=self._pick_provider)
@@ -73,8 +84,10 @@ class CmdCApp(rumps.App):
         self.item_cfg = rumps.MenuItem("Open Config File", callback=self._open_config)
         self.item_log = rumps.MenuItem("Open Log File", callback=self._open_log)
 
-        self.menu = [
-            self.item_enabled,
+        menu = [self.item_enabled]
+        if not self.permissions_ok:
+            menu.append(self.permissions_menu)
+        menu.extend([
             None,
             self.provider_menu,
             self.item_model,
@@ -85,13 +98,17 @@ class CmdCApp(rumps.App):
             self.item_cfg,
             self.item_log,
             None,
-        ]
+        ])
+        self.menu = menu
 
     def _refresh_model_title(self):
         self.item_model.title = f"Model: {config.model_for(self.cfg)} …"
 
     def _sync_idle_icon(self):
-        self.title = ICON_IDLE if self.cfg["enabled"] else ICON_OFF
+        if not self.permissions_ok:
+            self.title = ICON_ERR
+        else:
+            self.title = ICON_IDLE if self.cfg["enabled"] else ICON_OFF
 
     def _sync_idle_icon_if_ready(self):
         if not self._busy.locked():
@@ -176,6 +193,18 @@ class CmdCApp(rumps.App):
         LOG_PATH.touch(exist_ok=True)
         subprocess.run(["open", str(LOG_PATH)])
 
+    def _open_input_monitoring(self, _):
+        subprocess.run([
+            "open",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent",
+        ])
+
+    def _open_accessibility(self, _):
+        subprocess.run([
+            "open",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        ])
+
     # ---------- correction flow ----------
 
     def _on_hotkey_progress(self, _vk, press_count: int, _target_count: int):
@@ -246,18 +275,16 @@ def _notify(title: str, text: str):
 
 
 def _check_permissions() -> bool:
-    """Check + actively request Input Monitoring and Accessibility.
+    """Check Input Monitoring and Accessibility without blocking startup.
 
-    pynput gets NO events without Input Monitoring — silently. The request
-    calls pop the system prompt and add the host app (your terminal) to the
-    list in System Settings.
+    pynput gets no events without Input Monitoring. Permission prompts are not
+    requested here because their modal UI can block the menu-bar app before
+    its event loop starts.
     """
     try:
         from Quartz import (
             CGPreflightListenEventAccess,
             CGPreflightPostEventAccess,
-            CGRequestListenEventAccess,
-            CGRequestPostEventAccess,
         )
     except ImportError:
         log.warning("Quartz permission APIs unavailable, skipping check")
@@ -267,23 +294,10 @@ def _check_permissions() -> bool:
     post = bool(CGPreflightPostEventAccess())
     log.info("permissions: input monitoring=%s, accessibility(post)=%s", listen, post)
 
-    if not listen:
-        CGRequestListenEventAccess()
-    if not post:
-        CGRequestPostEventAccess()
-
     if not (listen and post):
-        rumps.alert(
-            title="cmdc needs permissions",
-            message=(
-                "Without these, the triple Cmd+C is never seen.\n\n"
-                "System Settings → Privacy & Security:\n"
-                "  • Input Monitoring → enable your terminal app\n"
-                "  • Accessibility → enable your terminal app\n\n"
-                "(If it's already checked, toggle it off and on.)\n"
-                "Then QUIT and RESTART cmdc — permissions only apply "
-                "to a fresh process."
-            ),
+        log.warning(
+            "permissions missing; enable cmdc under Privacy & Security, "
+            "then restart"
         )
         return False
     return True
@@ -301,8 +315,7 @@ def main():
         ],
     )
     log.info("cmdc starting (log=%s)", LOG_PATH)
-    _check_permissions()
-    CmdCApp().run()
+    CmdCApp(permissions_ok=_check_permissions()).run()
 
 
 if __name__ == "__main__":
