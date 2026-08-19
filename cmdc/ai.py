@@ -1,5 +1,6 @@
 """Provider-agnostic AI call driven by the templates in config."""
 
+from urllib.parse import urlparse, urlunparse
 import requests
 
 from . import config
@@ -42,13 +43,38 @@ def correct(text: str, cfg: dict) -> str:
         env = tpl.get("api_key_env", "")
         raise AIError(f"No API key for {provider}. Set it in the menu or export {env}.")
 
+    endpoint = config.endpoint_for(cfg)
+    norm_endpoint = endpoint
+    raw_url_tpl = tpl.get("url", "")
+    if "{endpoint}/v1beta" in raw_url_tpl or "{base_url}/v1beta" in raw_url_tpl:
+        if norm_endpoint.endswith("/v1beta"):
+            norm_endpoint = norm_endpoint[:-7]
+    if "{endpoint}/v1" in raw_url_tpl or "{base_url}/v1" in raw_url_tpl:
+        if norm_endpoint.endswith("/v1"):
+            norm_endpoint = norm_endpoint[:-3]
+
     vars = {
         "api_key": api_key,
         "model": config.model_for(cfg),
         "system_prompt": cfg["system_prompt"],
         "text": text,
+        "endpoint": norm_endpoint,
+        "base_url": norm_endpoint,
     }
-    url = _fill(tpl["url"], vars)
+    url = _fill(raw_url_tpl, vars)
+    if "{endpoint}" not in raw_url_tpl and "{base_url}" not in raw_url_tpl and endpoint:
+        ep_parsed = urlparse(endpoint)
+        orig_parsed = urlparse(url)
+        if ep_parsed.scheme and ep_parsed.netloc:
+            url = urlunparse((
+                ep_parsed.scheme,
+                ep_parsed.netloc,
+                orig_parsed.path,
+                orig_parsed.params,
+                orig_parsed.query,
+                orig_parsed.fragment,
+            ))
+
     headers = _fill(tpl.get("headers", {}), vars)
     body = _fill(tpl["body"], vars)
 

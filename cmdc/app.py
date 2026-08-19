@@ -74,6 +74,8 @@ class CmdCApp(rumps.App):
 
         self.item_model = rumps.MenuItem("", callback=self._edit_model)
         self._refresh_model_title()
+        self.item_endpoint = rumps.MenuItem("", callback=self._edit_endpoint)
+        self._refresh_endpoint_title()
         self.item_key = rumps.MenuItem("Set API Key…", callback=self._edit_key)
         self.item_prompt = rumps.MenuItem("Edit Prompt…", callback=self._edit_prompt)
 
@@ -81,6 +83,7 @@ class CmdCApp(rumps.App):
             "Replace symbols (— “” …)", callback=self._toggle_subs
         )
         self.item_subs.state = self.cfg["substitutions_enabled"]
+        self.item_perm = rumps.MenuItem("Check Permissions…", callback=self._menu_check_permissions)
         self.item_cfg = rumps.MenuItem("Open Config File", callback=self._open_config)
         self.item_log = rumps.MenuItem("Open Log File", callback=self._open_log)
 
@@ -91,10 +94,12 @@ class CmdCApp(rumps.App):
             None,
             self.provider_menu,
             self.item_model,
+            self.item_endpoint,
             self.item_key,
             self.item_prompt,
             None,
             self.item_subs,
+            self.item_perm,
             self.item_cfg,
             self.item_log,
             None,
@@ -103,6 +108,17 @@ class CmdCApp(rumps.App):
 
     def _refresh_model_title(self):
         self.item_model.title = f"Model: {config.model_for(self.cfg)} …"
+
+    def _refresh_endpoint_title(self):
+        provider = self.cfg["provider"]
+        custom = self.cfg.get("endpoints", {}).get(provider, "").strip()
+        if custom:
+            display = custom.replace("https://", "").replace("http://", "").rstrip("/")
+            if len(display) > 28:
+                display = display[:25] + "…"
+            self.item_endpoint.title = f"Endpoint: {display} …"
+        else:
+            self.item_endpoint.title = "Endpoint: (default) …"
 
     def _sync_idle_icon(self):
         if not self.permissions_ok:
@@ -125,6 +141,7 @@ class CmdCApp(rumps.App):
         for it in self.provider_menu.values():
             it.state = it.title == item.title
         self._refresh_model_title()
+        self._refresh_endpoint_title()
         config.save(self.cfg)
 
     def _edit_model(self, _):
@@ -140,8 +157,39 @@ class CmdCApp(rumps.App):
         )
         resp = win.run()
         if resp.clicked:
-            self.cfg["model"] = resp.text.strip()
+            val = resp.text.strip()
+            if val.lower() in ("null", "none", "default"):
+                val = ""
+            self.cfg["model"] = val
             self._refresh_model_title()
+            config.save(self.cfg)
+
+    def _edit_endpoint(self, _):
+        provider = self.cfg["provider"]
+        default_ep = self.cfg["providers"][provider].get("default_endpoint", "")
+        env = self.cfg["providers"][provider].get("endpoint_env", "")
+        current = self.cfg.get("endpoints", {}).get(provider, "")
+        msg = (
+            f"Endpoint / Base URL for {provider} (stored in ~/.config/cmdc/config.json).\n"
+            f"Leave empty to use default: {default_ep}"
+        )
+        if env:
+            msg += f"\nOr export {env}."
+        win = rumps.Window(
+            message=msg,
+            title="cmdc — Custom Endpoint",
+            default_text=current,
+            ok="Save",
+            cancel="Cancel",
+            dimensions=(360, 24),
+        )
+        resp = win.run()
+        if resp.clicked:
+            val = resp.text.strip()
+            if val.lower() in ("null", "none", "default"):
+                val = ""
+            self.cfg.setdefault("endpoints", {})[provider] = val
+            self._refresh_endpoint_title()
             config.save(self.cfg)
 
     def _edit_key(self, _):
@@ -184,6 +232,37 @@ class CmdCApp(rumps.App):
         self.cfg["substitutions_enabled"] = not self.cfg["substitutions_enabled"]
         item.state = self.cfg["substitutions_enabled"]
         config.save(self.cfg)
+
+    def _menu_check_permissions(self, _):
+        listen, post = True, True
+        try:
+            from Quartz import CGPreflightListenEventAccess, CGPreflightPostEventAccess
+            listen = bool(CGPreflightListenEventAccess())
+            post = bool(CGPreflightPostEventAccess())
+        except ImportError:
+            pass
+        if listen and post:
+            rumps.alert(
+                title="Permissions OK",
+                message="cmdc has both Input Monitoring and Accessibility permissions.",
+            )
+        else:
+            missing = []
+            if not listen:
+                missing.append("Input Monitoring")
+            if not post:
+                missing.append("Accessibility")
+            rumps.alert(
+                title="cmdc needs permissions",
+                message=(
+                    f"Missing: {', '.join(missing)}\n\n"
+                    "System Settings → Privacy & Security:\n"
+                    "  • Input Monitoring → enable cmdc (or Terminal)\n"
+                    "  • Accessibility → enable cmdc (or Terminal)\n\n"
+                    "(If already checked, toggle it off and on.)\n"
+                    "Then restart cmdc."
+                ),
+            )
 
     def _open_config(self, _):
         subprocess.run(["open", str(config.CONFIG_PATH)])
@@ -315,6 +394,12 @@ def main():
         ],
     )
     log.info("cmdc starting (log=%s)", LOG_PATH)
+    try:
+        from AppKit import NSApplication, NSApplicationActivationPolicyAccessory
+        nsapp = NSApplication.sharedApplication()
+        nsapp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
+    except Exception as e:
+        log.warning("failed to set activation policy: %s", e)
     CmdCApp(permissions_ok=_check_permissions()).run()
 
 

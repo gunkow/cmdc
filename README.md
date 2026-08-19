@@ -44,11 +44,11 @@ Choose a provider from the menu bar and set its API key with **Set API Key…**.
 Alternatively, export one of the supported environment variables before
 launching cmdc:
 
-| Provider | Environment variable | Default model |
-|---|---|---|
-| OpenAI | `OPENAI_API_KEY` | `gpt-5.4-mini` |
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash` |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5-20251001` |
+| Provider | Environment variable | Endpoint env | Default model |
+|---|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `gpt-5.4-mini` |
+| Gemini | `GEMINI_API_KEY` | `GEMINI_BASE_URL` | `gemini-3.7-flash` |
+| Anthropic | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | `claude-haiku-4-5-20251001` |
 
 When cmdc is launched from Finder or Login Items, shell environment variables
 may not be available. In that case, save the key through the menu bar.
@@ -118,6 +118,7 @@ in both macOS privacy panes. Restart the app after changing either permission.
 | **Permissions required** | Opens the Input Monitoring and Accessibility privacy panes when either permission is missing. |
 | **Provider** | Selects OpenAI, Gemini, Anthropic, or a configured custom provider. |
 | **Model: …** | Overrides the provider's default model. Leave it empty to use the default. |
+| **Endpoint: …** | Overrides the provider's base endpoint URL (e.g. for private Vertex native proxies or local servers). |
 | **Set API Key…** | Saves an API key for the selected provider. |
 | **Edit Prompt…** | Opens the system-prompt editor. Enter inserts a line break; **Save** applies it. |
 | **Replace symbols** | Converts typographic dashes, quotes, and ellipses to configured replacements. |
@@ -138,12 +139,22 @@ Common settings include:
 | `trigger_window_sec` | `1.0` | Time window for the trigger sequence. |
 | `max_chars` | `12000` | Maximum clipboard-text length sent to the provider. |
 | `timeout_sec` | `30` | HTTP request timeout in seconds. |
+| `endpoints` | `{}` | Per-provider custom base URLs or endpoints. |
 | `substitutions_enabled` | `true` | Enables response post-processing. |
 | `substitutions` | built-in map | Character replacements applied before pasting. |
 
-Gemini uses `thinkingLevel: minimal` by default to keep short correction calls
-responsive. Existing configurations that still use the old bundled
-`gemini-2.5-flash` default are migrated automatically.
+Gemini uses `gemini-3.7-flash` with `thinkingBudget: 0` by default to keep short correction calls
+instant.
+
+### Custom endpoints and proxies
+
+To route Gemini requests through a private Vertex AI Native proxy:
+1. In the menu bar, click **Endpoint: …** and enter:
+   `https://omi-gemini-native-proxy-775418318631.europe-west2.run.app`
+   (or export `GEMINI_BASE_URL` in your shell environment).
+2. Set the bearer token under **Set API Key…** or export `VERTEX_PROXY_API_KEY`. (If `~/.config/opencode/vertex-proxy-api-key` is present, it is picked up automatically).
+
+Existing configurations that still use legacy default models are migrated automatically.
 
 ### Custom providers
 
