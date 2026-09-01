@@ -10,6 +10,10 @@ echo "==> Building cmdc.app..."
 # 1. Ensure dependencies and editable install
 cd "$ROOT"
 uv sync
+PYTHON_HOME="$(uv run python -c 'import sys; print(sys.base_prefix)')"
+PYTHON_DYLIB="$(uv run python -c 'import sys, sysconfig; from pathlib import Path; framework = sysconfig.get_config_var("PYTHONFRAMEWORK"); print(Path(sys.base_prefix) / "Python" if framework else Path(sysconfig.get_config_var("LIBDIR")) / sysconfig.get_config_var("LDLIBRARY"))')"
+SITE_PACKAGES="$(uv run python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')"
+STDLIB="$(uv run python -c 'import sysconfig; print(sysconfig.get_path("stdlib"))')"
 
 # 2. Prepare bundle directories
 rm -rf "$APP_DIR"
@@ -144,7 +148,14 @@ EOF
 
 # 5. Compile native Mach-O launcher
 echo "==> Compiling native launcher..."
-clang -O2 "$ROOT/scripts/launcher.c" -o "$APP_DIR/Contents/MacOS/cmdc"
+clang -O2 \
+  "-DCMDC_PROJECT_DIR=\"$ROOT\"" \
+  "-DCMDC_VENV_DIR=\"$ROOT/.venv\"" \
+  "-DCMDC_PYTHON_HOME=\"$PYTHON_HOME\"" \
+  "-DCMDC_PYTHON_DYLIB=\"$PYTHON_DYLIB\"" \
+  "-DCMDC_SITE_PACKAGES=\"$SITE_PACKAGES\"" \
+  "-DCMDC_STDLIB=\"$STDLIB\"" \
+  "$ROOT/scripts/launcher.c" -o "$APP_DIR/Contents/MacOS/cmdc"
 
 # 6. Ad-hoc codesign
 codesign --force --deep --sign - "$APP_DIR"

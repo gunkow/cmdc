@@ -53,9 +53,10 @@ def correct(text: str, cfg: dict) -> str:
         if norm_endpoint.endswith("/v1"):
             norm_endpoint = norm_endpoint[:-3]
 
+    model = config.model_for(cfg)
     vars = {
         "api_key": api_key,
-        "model": config.model_for(cfg),
+        "model": model,
         "system_prompt": cfg["system_prompt"],
         "text": text,
         "endpoint": norm_endpoint,
@@ -77,6 +78,9 @@ def correct(text: str, cfg: dict) -> str:
 
     headers = _fill(tpl.get("headers", {}), vars)
     body = _fill(tpl["body"], vars)
+    if provider == "openai" and (model == "gpt-5.6" or model.startswith("gpt-5.6-")):
+        body.pop("temperature", None)
+        body["reasoning_effort"] = "none"
 
     try:
         resp = requests.post(url, headers=headers, json=body,

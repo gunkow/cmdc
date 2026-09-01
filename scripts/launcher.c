@@ -6,14 +6,33 @@
 #include <mach-o/dyld.h>
 #include <limits.h>
 
+#ifndef CMDC_PROJECT_DIR
+#error "CMDC_PROJECT_DIR must be set at build time"
+#endif
+#ifndef CMDC_VENV_DIR
+#error "CMDC_VENV_DIR must be set at build time"
+#endif
+#ifndef CMDC_PYTHON_HOME
+#error "CMDC_PYTHON_HOME must be set at build time"
+#endif
+#ifndef CMDC_PYTHON_DYLIB
+#error "CMDC_PYTHON_DYLIB must be set at build time"
+#endif
+#ifndef CMDC_SITE_PACKAGES
+#error "CMDC_SITE_PACKAGES must be set at build time"
+#endif
+#ifndef CMDC_STDLIB
+#error "CMDC_STDLIB must be set at build time"
+#endif
+
 typedef int (*Py_BytesMain_t)(int, char **);
 
 int main(int argc, char *argv[]) {
     // Project root and virtualenv paths
-    const char *project_dir = "/Users/gw/work/ext/cmdc";
-    const char *venv_dir = "/Users/gw/work/ext/cmdc/.venv";
-    const char *python_home = "/Users/gw/.local/share/uv/python/cpython-3.12-macos-aarch64-none";
-    const char *dylib_path = "/Users/gw/.local/share/uv/python/cpython-3.12-macos-aarch64-none/lib/libpython3.12.dylib";
+    const char *project_dir = CMDC_PROJECT_DIR;
+    const char *venv_dir = CMDC_VENV_DIR;
+    const char *python_home = CMDC_PYTHON_HOME;
+    const char *dylib_path = CMDC_PYTHON_DYLIB;
 
     // Set up environment
     setenv("VIRTUAL_ENV", venv_dir, 1);
@@ -21,8 +40,7 @@ int main(int argc, char *argv[]) {
 
     char python_path[4096];
     snprintf(python_path, sizeof(python_path),
-             "%s/lib/python3.12/site-packages:%s:%s/lib/python3.12",
-             venv_dir, project_dir, python_home);
+             "%s:%s:%s", CMDC_SITE_PACKAGES, project_dir, CMDC_STDLIB);
     setenv("PYTHONPATH", python_path, 1);
 
     const char *orig_path = getenv("PATH");
