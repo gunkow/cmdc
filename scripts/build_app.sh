@@ -162,7 +162,9 @@ codesign --force --deep --sign - "$APP_DIR"
 
 # 7. Install to /Applications
 echo "==> Installing to $DEST..."
-pkill -9 -f "cmdc" || true
+# Match the installed binary exactly: a bare "cmdc" pattern also matches the
+# shell running this script and any editor or terminal sitting in the repo.
+pkill -f "cmdc.app/Contents/MacOS/cmdc" || true
 sleep 1
 rm -rf "$DEST"
 cp -R "$APP_DIR" "$DEST"
