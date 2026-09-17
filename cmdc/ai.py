@@ -81,6 +81,25 @@ def correct(text: str, cfg: dict) -> str:
     if provider == "openai" and (model == "gpt-5.6" or model.startswith("gpt-5.6-")):
         body.pop("temperature", None)
         body["reasoning_effort"] = "none"
+    elif provider == "gemini":
+        gen_cfg = body.get("generationConfig")
+        if isinstance(gen_cfg, dict):
+            thinking_cfg = gen_cfg.get("thinkingConfig")
+            if isinstance(thinking_cfg, dict):
+                model_name = model.split("/")[-1]
+                if model_name.startswith("gemini-3") or model_name.startswith("gemini-exp-1"):
+                    thinking_cfg.pop("thinkingBudget", None)
+                    level = thinking_cfg.get("thinkingLevel")
+                    if model_name.startswith("gemini-3.7"):
+                        if not level or level.lower() == "minimal":
+                            thinking_cfg["thinkingLevel"] = "low"
+                    else:
+                        if not level:
+                            thinking_cfg["thinkingLevel"] = "minimal"
+                elif model_name.startswith("gemini-2"):
+                    thinking_cfg.pop("thinkingLevel", None)
+                    if "thinkingBudget" not in thinking_cfg:
+                        thinking_cfg["thinkingBudget"] = 0
 
     try:
         resp = requests.post(url, headers=headers, json=body,

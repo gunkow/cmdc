@@ -143,8 +143,8 @@ Common settings include:
 | `substitutions_enabled` | `true` | Enables response post-processing. |
 | `substitutions` | built-in map | Character replacements applied before pasting. |
 
-Gemini uses `gemini-3.7-flash` with `thinkingBudget: 0` by default to keep short correction calls
-instant.
+Gemini uses `gemini-3.7-flash` with `thinkingLevel: low` by default to keep short correction calls
+responsive.
 
 ### Custom endpoints and proxies
 

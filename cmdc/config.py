@@ -17,7 +17,7 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
-DEFAULT_GEMINI_THINKING_CONFIG = {"thinkingBudget": 0}
+DEFAULT_GEMINI_THINKING_CONFIG = {"thinkingLevel": "low"}
 LEGACY_GEMINI_DEFAULT_MODELS = {"gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.6-flash"}
 
 # Provider templates. Placeholders {api_key} {model} {system_prompt} {text} {endpoint}
@@ -153,7 +153,11 @@ def _migrate(cfg: dict) -> bool:
             generation_config = body.get("generationConfig")
             if isinstance(generation_config, dict):
                 thinking_config = generation_config.get("thinkingConfig")
-                if thinking_config != DEFAULT_GEMINI_THINKING_CONFIG:
+                if (
+                    not isinstance(thinking_config, dict)
+                    or "thinkingBudget" in thinking_config
+                    or thinking_config.get("thinkingLevel") not in {"minimal", "low", "medium", "high"}
+                ):
                     generation_config["thinkingConfig"] = copy.deepcopy(
                         DEFAULT_GEMINI_THINKING_CONFIG
                     )
