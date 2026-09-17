@@ -98,6 +98,7 @@ class CmdCApp(rumps.App):
         self._secure_input_since = time.time() if self.secure_input else None
         self.cfg = config.load()
         self._busy = threading.Lock()
+        self._settings_controller = None
         self._build_menu()
         self._sync_idle_icon()
         self.listener = MultiPressListener(
@@ -145,23 +146,9 @@ class CmdCApp(rumps.App):
             rumps.MenuItem("Open Accessibility…", callback=self._open_accessibility)
         )
 
-        self.provider_menu = rumps.MenuItem("Provider")
-        for name in self.cfg["providers"]:
-            item = rumps.MenuItem(name, callback=self._pick_provider)
-            item.state = name == self.cfg["provider"]
-            self.provider_menu.add(item)
-
-        self.item_model = rumps.MenuItem("", callback=self._edit_model)
-        self._refresh_model_title()
-        self.item_endpoint = rumps.MenuItem("", callback=self._edit_endpoint)
-        self._refresh_endpoint_title()
-        self.item_key = rumps.MenuItem("Set API Key…", callback=self._edit_key)
-        self.item_prompt = rumps.MenuItem("Edit Prompt…", callback=self._edit_prompt)
-
-        self.item_subs = rumps.MenuItem(
-            "Replace symbols (— “” …)", callback=self._toggle_subs
+        self.item_settings = rumps.MenuItem(
+            "Provider Settings…", callback=self._open_settings
         )
-        self.item_subs.state = self.cfg["substitutions_enabled"]
         self.item_secure = rumps.MenuItem(
             self._secure_item_title(), callback=self._menu_unblock_secure_input
         )
@@ -180,35 +167,33 @@ class CmdCApp(rumps.App):
             menu.append(self.permissions_menu)
         menu.extend([
             None,
-            self.provider_menu,
-            self.item_model,
-            self.item_endpoint,
-            self.item_key,
-            self.item_prompt,
-            None,
-            self.item_subs,
+            self.item_settings,
             self.item_fix_clipboard,
+            None,
             self.item_secure,
             self.item_perm,
-            self.item_cfg,
-            self.item_log,
             None,
         ])
         self.menu = menu
 
+    def _open_settings(self, _=None):
+        if self._settings_controller is None:
+            from .settings_window import SettingsWindowController
+            self._settings_controller = SettingsWindowController.alloc().initWithApp_(self)
+        self._settings_controller.show()
+
+    def _on_settings_saved(self):
+        log.info("settings saved: provider=%s model=%s prompt_chars=%d subs=%s",
+                 self.cfg["provider"], config.model_for(self.cfg),
+                 len(self.cfg.get("system_prompt", "")),
+                 self.cfg.get("substitutions_enabled"))
+        self._sync_idle_icon()
+
     def _refresh_model_title(self):
-        self.item_model.title = f"Model: {config.model_for(self.cfg)} …"
+        pass
 
     def _refresh_endpoint_title(self):
-        provider = self.cfg["provider"]
-        custom = self.cfg.get("endpoints", {}).get(provider, "").strip()
-        if custom:
-            display = custom.replace("https://", "").replace("http://", "").rstrip("/")
-            if len(display) > 28:
-                display = display[:25] + "…"
-            self.item_endpoint.title = f"Endpoint: {display} …"
-        else:
-            self.item_endpoint.title = "Endpoint: (default) …"
+        pass
 
     def _sync_idle_icon(self):
         if not self.permissions_ok or self.secure_input:

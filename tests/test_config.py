@@ -67,5 +67,33 @@ assert stat.S_IMODE(config.CONFIG_PATH.stat().st_mode) == 0o600
             self.assertEqual(result.returncode, 0, result.stderr)
 
 
+class ConfigModelSelectionTests(unittest.TestCase):
+    def test_model_for_per_provider_and_fallback(self):
+        from cmdc import config
+        cfg = {
+            "provider": "openai",
+            "model": "",
+            "models": {
+                "openai": "gpt-5.6-luna",
+                "gemini": "gemini-3.5-flash-lite",
+            },
+            "providers": config.DEFAULTS["providers"],
+        }
+        self.assertEqual(config.model_for(cfg, "openai"), "gpt-5.6-luna")
+        self.assertEqual(config.model_for(cfg, "gemini"), "gemini-3.5-flash-lite")
+        self.assertEqual(config.model_for(cfg, "anthropic"), "claude-haiku-4-5-20251001")
+
+    def test_migrate_populates_models_from_active_model(self):
+        from cmdc import config
+        cfg = {
+            "provider": "gemini",
+            "model": "gemini-3.5-flash-lite",
+            "providers": config.DEFAULTS["providers"],
+        }
+        config._migrate(cfg)
+        self.assertIn("models", cfg)
+        self.assertEqual(cfg["models"]["gemini"], "gemini-3.5-flash-lite")
+
+
 if __name__ == "__main__":
     unittest.main()

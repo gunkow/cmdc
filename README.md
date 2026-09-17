@@ -40,7 +40,7 @@ uv run cmdc
 On first launch, grant the required permissions under **System Settings →
 Privacy & Security**, then restart cmdc.
 
-Choose a provider from the menu bar and set its API key with **Set API Key…**.
+Choose a provider and model, and configure API keys in **Provider Settings…**.
 Alternatively, export one of the supported environment variables before
 launching cmdc:
 
@@ -116,14 +116,10 @@ in both macOS privacy panes. Restart the app after changing either permission.
 |---|---|
 | **Enabled** | Enables or disables the global trigger. |
 | **Permissions required** | Opens the Input Monitoring and Accessibility privacy panes when either permission is missing. |
-| **Provider** | Selects OpenAI, Gemini, Anthropic, or a configured custom provider. |
-| **Model: …** | Overrides the provider's default model. Leave it empty to use the default. |
-| **Endpoint: …** | Overrides the provider's base endpoint URL (e.g. for private Vertex native proxies or local servers). |
-| **Set API Key…** | Saves an API key for the selected provider. |
-| **Edit Prompt…** | Opens the system-prompt editor. Enter inserts a line break; **Save** applies it. |
-| **Replace symbols** | Converts typographic dashes, quotes, and ellipses to configured replacements. |
-| **Open Config File** | Opens the complete JSON configuration. |
-| **Open Log File** | Opens the current log at `/tmp/cmdc.log`. |
+| **Provider Settings…** | Opens the interactive settings window to choose providers, select or enter models, set API keys, custom endpoints, thinking levels, system prompt, and symbol replacement. Remembers individual settings per provider. |
+| **Correct Clipboard Now** | Runs text correction on the current clipboard text immediately without shortcut presses. |
+| **Secure Input: …** | Shows whether macOS Secure Input is active, names the holder app, and offers to unblock shortcuts. |
+| **Check Permissions…** | Verifies Input Monitoring and Accessibility permissions. |
 
 ## Configuration
 

@@ -20,6 +20,12 @@ DEFAULT_GEMINI_MODEL = "gemini-3.7-flash"
 DEFAULT_GEMINI_THINKING_CONFIG = {"thinkingLevel": "low"}
 LEGACY_GEMINI_DEFAULT_MODELS = {"gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.6-flash"}
 
+DEFAULT_MODELS = {
+    "openai": "gpt-5.4-mini",
+    "gemini": DEFAULT_GEMINI_MODEL,
+    "anthropic": "claude-haiku-4-5-20251001",
+}
+
 # Provider templates. Placeholders {api_key} {model} {system_prompt} {text} {endpoint}
 # are substituted into url/headers/body strings. response_path is a
 # dot-separated path into the response JSON (ints = list indices).
@@ -27,6 +33,7 @@ DEFAULTS = {
     "enabled": True,
     "provider": "openai",
     "model": "",  # empty -> provider's default_model
+    "models": {},
     "api_keys": {},  # {"openai": "sk-..."}; falls back to api_key_env
     "endpoints": {},  # {"gemini": "https://..."}; falls back to endpoint_env / default_endpoint
     "system_prompt": DEFAULT_PROMPT,
@@ -124,6 +131,17 @@ def _migrate(cfg: dict) -> bool:
         cfg["endpoints"] = {}
         changed = True
 
+    if "models" not in cfg or not isinstance(cfg.get("models"), dict):
+        cfg["models"] = copy.deepcopy(DEFAULT_MODELS)
+        changed = True
+
+    active_prov = cfg.get("provider")
+    active_model = cfg.get("model", "").strip()
+    if active_prov and active_model:
+        if cfg["models"].get(active_prov) != active_model:
+            cfg["models"][active_prov] = active_model
+            changed = True
+
     gemini = cfg.get("providers", {}).get("gemini")
     if isinstance(gemini, dict):
         if gemini.get("default_model") in LEGACY_GEMINI_DEFAULT_MODELS:
@@ -213,8 +231,15 @@ def save(cfg: dict) -> None:
         temporary_path.unlink(missing_ok=True)
 
 
-def model_for(cfg: dict) -> str:
-    return cfg["model"] or cfg["providers"][cfg["provider"]]["default_model"]
+def model_for(cfg: dict, provider: str | None = None) -> str:
+    prov = provider or cfg.get("provider", "openai")
+    if prov == cfg.get("provider") and cfg.get("model", "").strip():
+        return cfg["model"].strip()
+    per_prov = cfg.get("models", {}).get(prov, "").strip()
+    if per_prov:
+        return per_prov
+    tpl = cfg.get("providers", {}).get(prov, {})
+    return tpl.get("default_model", DEFAULT_MODELS.get(prov, ""))
 
 
 def endpoint_for(cfg: dict, provider: str | None = None) -> str:
