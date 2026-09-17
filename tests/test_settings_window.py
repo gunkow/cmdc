@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from cmdc import app, config
+from cmdc.prompt_window import PromptWindowController
 from cmdc.settings_window import SettingsWindowController, _clean_model_title
 
 
@@ -41,12 +42,12 @@ class SettingsWindowTests(unittest.TestCase):
         menu_titles = [item.title for item in menu_app.menu.values() if hasattr(item, "title")]
         self.assertIn("Enabled", menu_titles)
         self.assertIn("Provider Settings…", menu_titles)
+        self.assertIn("Edit Prompt…", menu_titles)
         self.assertIn("Correct Clipboard Now", menu_titles)
         # Ensure original menu clutter is removed
         self.assertFalse(any(t.startswith("Model:") for t in menu_titles))
         self.assertFalse(any(t.startswith("Endpoint:") for t in menu_titles))
         self.assertNotIn("Set API Key…", menu_titles)
-        self.assertNotIn("Edit Prompt…", menu_titles)
 
     def test_settings_window_data_interaction(self):
         ctrl = SettingsWindowController.alloc().initWithApp_(self.mock_app)
@@ -86,6 +87,32 @@ class SettingsWindowTests(unittest.TestCase):
         self.assertEqual(self.mock_app.cfg["provider"], "openai")
         self.assertEqual(self.mock_app.cfg["models"]["openai"], "gpt-5.4")
         self.assertEqual(self.mock_app.cfg["models"]["gemini"], "gemini-3.5-flash-lite")
+        self.mock_app._on_settings_saved.assert_called_once()
+
+    def test_prompt_window_controller_and_dimensions(self):
+        ctrl = PromptWindowController.alloc().initWithApp_(self.mock_app)
+        ctrl._build_window()
+        ctrl._load_from_app_config()
+
+        # Verify spacious dimensions (wide and long enough)
+        frame = ctrl.window.frame()
+        self.assertGreaterEqual(frame.size.width, 700)
+        self.assertGreaterEqual(frame.size.height, 500)
+
+        # Check content and counter
+        self.assertEqual(ctrl.text_view.string(), self.cfg["system_prompt"])
+        self.assertIn("characters", ctrl.counter_label.stringValue())
+
+        # Test editing and saving
+        ctrl.text_view.setString_("Custom test prompt for cmdc")
+        ctrl.textDidChange_(None)
+        self.assertIn("27 characters", ctrl.counter_label.stringValue())
+
+        with patch("cmdc.config.save") as mock_save:
+            ctrl.saveClicked_(ctrl.save_btn)
+            mock_save.assert_called_once()
+
+        self.assertEqual(self.mock_app.cfg["system_prompt"], "Custom test prompt for cmdc")
         self.mock_app._on_settings_saved.assert_called_once()
 
 

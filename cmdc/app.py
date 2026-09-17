@@ -99,6 +99,7 @@ class CmdCApp(rumps.App):
         self.cfg = config.load()
         self._busy = threading.Lock()
         self._settings_controller = None
+        self._prompt_controller = None
         self._build_menu()
         self._sync_idle_icon()
         self.listener = MultiPressListener(
@@ -149,6 +150,9 @@ class CmdCApp(rumps.App):
         self.item_settings = rumps.MenuItem(
             "Provider Settings…", callback=self._open_settings
         )
+        self.item_prompt = rumps.MenuItem(
+            "Edit Prompt…", callback=self._open_prompt_window
+        )
         self.item_secure = rumps.MenuItem(
             self._secure_item_title(), callback=self._menu_unblock_secure_input
         )
@@ -168,6 +172,7 @@ class CmdCApp(rumps.App):
         menu.extend([
             None,
             self.item_settings,
+            self.item_prompt,
             self.item_fix_clipboard,
             None,
             self.item_secure,
@@ -181,6 +186,15 @@ class CmdCApp(rumps.App):
             from .settings_window import SettingsWindowController
             self._settings_controller = SettingsWindowController.alloc().initWithApp_(self)
         self._settings_controller.show()
+
+    def _open_prompt_window(self, _=None):
+        if self._prompt_controller is None:
+            from .prompt_window import PromptWindowController
+            self._prompt_controller = PromptWindowController.alloc().initWithApp_(self)
+        self._prompt_controller.show()
+
+    def _edit_prompt(self, _=None):
+        self._open_prompt_window()
 
     def _on_settings_saved(self):
         log.info("settings saved: provider=%s model=%s prompt_chars=%d subs=%s",

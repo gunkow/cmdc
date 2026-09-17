@@ -198,6 +198,13 @@ class SettingsWindowController(NSObject):
         lbl_prompt.setFrame_(NSMakeRect(16, 90, 120, 18))
         cbox_view.addSubview_(lbl_prompt)
 
+        btn_expand = AppKit.NSButton.alloc().initWithFrame_(NSMakeRect(228, 88, 126, 22))
+        btn_expand.setTitle_("Large Editor…")
+        btn_expand.setBezelStyle_(AppKit.NSBezelStyleRecessed)
+        btn_expand.setTarget_(self)
+        btn_expand.setAction_("openPromptWindowClicked:")
+        cbox_view.addSubview_(btn_expand)
+
         btn_reset = AppKit.NSButton.alloc().initWithFrame_(NSMakeRect(360, 88, 120, 22))
         btn_reset.setTitle_("Reset to Default")
         btn_reset.setBezelStyle_(AppKit.NSBezelStyleRecessed)
@@ -380,6 +387,10 @@ class SettingsWindowController(NSObject):
 
     def resetPromptClicked_(self, sender):
         self.prompt_view.setString_(config.DEFAULT_PROMPT)
+
+    def openPromptWindowClicked_(self, sender):
+        if self.app:
+            self.app._open_prompt_window()
 
     def openConfigClicked_(self, sender):
         if self.app:

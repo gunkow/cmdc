@@ -117,6 +117,7 @@ in both macOS privacy panes. Restart the app after changing either permission.
 | **Enabled** | Enables or disables the global trigger. |
 | **Permissions required** | Opens the Input Monitoring and Accessibility privacy panes when either permission is missing. |
 | **Provider Settings…** | Opens the interactive settings window to choose providers, select or enter models, set API keys, custom endpoints, thinking levels, system prompt, and symbol replacement. Remembers individual settings per provider. |
+| **Edit Prompt…** | Opens a dedicated, spacious editor window to view and customize the system prompt with live character and word counters. |
 | **Correct Clipboard Now** | Runs text correction on the current clipboard text immediately without shortcut presses. |
 | **Secure Input: …** | Shows whether macOS Secure Input is active, names the holder app, and offers to unblock shortcuts. |
 | **Check Permissions…** | Verifies Input Monitoring and Accessibility permissions. |
