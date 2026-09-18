@@ -25,11 +25,26 @@ def line_layout(text):
     ]
 
 
+def layout_matches(case, output):
+    expected = line_layout(case["reference"])
+    actual = line_layout(output)
+    if not case.get("allow_blank_line_removal"):
+        return actual == expected
+    position = 0
+    for prefix in actual:
+        while position < len(expected) and expected[position] is None and prefix is not None:
+            position += 1
+        if position == len(expected) or expected[position] != prefix:
+            return False
+        position += 1
+    return all(prefix is None for prefix in expected[position:])
+
+
 def grade(case, output):
     failures = []
     if not output.strip():
         failures.append("empty output")
-    if line_layout(output) != line_layout(case["reference"]):
+    if not layout_matches(case, output):
         failures.append("line breaks, blank lines, or Markdown prefixes changed")
     if case.get("must_change") and output == case["input"]:
         failures.append("input was not corrected")

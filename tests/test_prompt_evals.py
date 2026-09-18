@@ -51,6 +51,23 @@ class PromptEvalTests(unittest.TestCase):
         self.assertEqual(output.count("\n"), case["reference"].count("\n"))
         self.assertTrue(eval_prompt.grade(case, output))
 
+    def test_extra_blank_line_can_be_removed_between_list_items(self):
+        case = BY_ID["multiline-source"]
+        output = "- This server is ready.\n- The tests are passing."
+        self.assertEqual(eval_prompt.grade(case, output), [])
+        strict_case = {**case, "allow_blank_line_removal": False}
+        self.assertTrue(eval_prompt.grade(strict_case, output))
+
+    def test_blank_line_exception_does_not_allow_merging_or_reformatting_items(self):
+        case = BY_ID["multiline-source"]
+        for output in (
+            "- This server is ready. - The tests are passing.",
+            "This server is ready.\nThe tests are passing.",
+            "- This server is ready.\n\n\n- The tests are passing.",
+        ):
+            with self.subTest(output=output):
+                self.assertTrue(eval_prompt.grade(case, output))
+
     def test_unsolicited_emoji_and_commentary_fail(self):
         case = BY_ID["no-added-emoji"]
         self.assertTrue(eval_prompt.grade(case, case["reference"] + " 🚀"))

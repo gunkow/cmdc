@@ -37,7 +37,9 @@ vary when it preserves the required meaning. Checks cover required terms,
 forbidden answers or fabricated measurements, word limits, corrections to
 known mistakes, and line layout. Blank-line positions, indentation, and list
 markers are compared against the reference layout, after removing any editing
-directive. Identical input fails where correction is required.
+directive. The multiline-list case allows removing extra blank lines between
+items, but still requires separate lines and unchanged list markers. Identical
+input fails where correction is required.
 
 JSON reports default to `~/Documents/generated/cmdc-evals-<timestamp>.json`;
 choose a path with `--output`. Reports contain inputs, references, raw responses,
@@ -57,5 +59,6 @@ behavioral failures, and `2` for request or configuration errors.
 Add cases to `cases.json` with `id`, `purpose`, `input`, `reference`, and
 `max_words`. Optional checks are `must_include` (case-sensitive literals),
 `must_match` and `must_not_match` (case-insensitive Python regexes), and
-`must_change`. The regression tests verify that reference outputs pass and
+`must_change`. Set `allow_blank_line_removal` to permit deleting blank lines
+without adding or moving them or merging nonblank lines. The regression tests verify that reference outputs pass and
 known bad outputs fail, including the fabricated table from the original bug.

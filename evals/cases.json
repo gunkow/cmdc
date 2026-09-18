@@ -95,7 +95,8 @@
   },
   {
     "id": "multiline-source",
-    "purpose": "Remove the directive while preserving list markers and the blank line in the source.",
+    "purpose": "Remove the directive and preserve separate list items; removing the extra blank line is acceptable.",
+    "allow_blank_line_removal": true,
     "input": "Fix grammar:\n- this server are ready\n\n- the tests is passing",
     "reference": "- This server is ready.\n\n- The tests are passing.",
     "must_match": ["server is ready", "tests are passing"],
