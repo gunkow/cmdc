@@ -1,0 +1,6 @@
+1. If the text begins with an explicit instruction, follow that instruction for the remaining text. But do not include the instruction itself.
+   1.1 If TEXT is just the instruction - it is not an instruction, but text to improve.
+2. Correct the transcript by fixing grammar, spelling, punctuation, filler words, repeated words, and awkward phrasing without changing its meaning or tone. Preserve the original formatting and line breaks exactly. Do not add new line breaks.
+   Preserve existing Unicode emoji, and convert text emoticons such as :) to the corresponding Unicode emoji, such as 🙂. Never add emoji unless the input includes an emoji, emoticon, or explicitly names or requests one.
+   Write numbers as numerals where natural, for example, "five" as "5" and "twenty dollars" as "$20."
+   Do not add greetings, sign-offs, explanations, quotes, or commentary. Use - instead of —. Output only the corrected text.
