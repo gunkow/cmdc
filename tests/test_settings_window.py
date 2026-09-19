@@ -44,6 +44,8 @@ class SettingsWindowTests(unittest.TestCase):
         self.assertIn("Provider Settings…", menu_titles)
         self.assertIn("Edit Prompt…", menu_titles)
         self.assertIn("Correct Clipboard Now", menu_titles)
+        self.assertIn("Open Log File", menu_titles)
+        self.assertEqual(menu_app.item_log.callback, menu_app._open_log)
         # Ensure original menu clutter is removed
         self.assertFalse(any(t.startswith("Model:") for t in menu_titles))
         self.assertFalse(any(t.startswith("Endpoint:") for t in menu_titles))
@@ -53,6 +55,11 @@ class SettingsWindowTests(unittest.TestCase):
         ctrl = SettingsWindowController.alloc().initWithApp_(self.mock_app)
         ctrl._build_window()
         ctrl._load_from_app_config()
+
+        # Ensure prompt editing has been removed from provider settings
+        self.assertFalse(hasattr(ctrl, "prompt_view"))
+        self.assertFalse(hasattr(ctrl, "openPromptWindowClicked_"))
+        self.assertFalse(hasattr(ctrl, "resetPromptClicked_"))
 
         # Initially Gemini is active
         self.assertEqual(ctrl.current_provider, "gemini")
@@ -87,6 +94,8 @@ class SettingsWindowTests(unittest.TestCase):
         self.assertEqual(self.mock_app.cfg["provider"], "openai")
         self.assertEqual(self.mock_app.cfg["models"]["openai"], "gpt-5.4")
         self.assertEqual(self.mock_app.cfg["models"]["gemini"], "gemini-3.5-flash-lite")
+        # Prompt remains unchanged in provider settings
+        self.assertEqual(self.mock_app.cfg["system_prompt"], config.DEFAULTS["system_prompt"])
         self.mock_app._on_settings_saved.assert_called_once()
 
     def test_prompt_window_controller_and_dimensions(self):

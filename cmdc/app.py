@@ -177,6 +177,7 @@ class CmdCApp(rumps.App):
             None,
             self.item_secure,
             self.item_perm,
+            self.item_log,
             None,
         ])
         self.menu = menu

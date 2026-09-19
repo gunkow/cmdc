@@ -60,7 +60,7 @@ class SettingsWindowController(NSObject):
 
     def _build_window(self):
         self.window = AppKit.NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(
-            NSMakeRect(0, 0, 540, 630),
+            NSMakeRect(0, 0, 540, 530),
             AppKit.NSWindowStyleMaskTitled | AppKit.NSWindowStyleMaskClosable,
             AppKit.NSBackingStoreBuffered,
             False,
@@ -73,11 +73,11 @@ class SettingsWindowController(NSObject):
         # Top bar: Active Provider
         lbl_prov = AppKit.NSTextField.labelWithString_("Active Provider:")
         lbl_prov.setFont_(AppKit.NSFont.boldSystemFontOfSize_(13))
-        lbl_prov.setFrame_(NSMakeRect(24, 584, 120, 20))
+        lbl_prov.setFrame_(NSMakeRect(24, 484, 120, 20))
         content.addSubview_(lbl_prov)
 
         self.prov_popup = AppKit.NSPopUpButton.alloc().initWithFrame_pullsDown_(
-            NSMakeRect(144, 580, 180, 26), False
+            NSMakeRect(144, 480, 180, 26), False
         )
         self.prov_popup.setTarget_(self)
         self.prov_popup.setAction_("providerChanged:")
@@ -86,11 +86,11 @@ class SettingsWindowController(NSObject):
         lbl_hint = AppKit.NSTextField.labelWithString_("Active correction engine")
         lbl_hint.setFont_(AppKit.NSFont.systemFontOfSize_(11))
         lbl_hint.setTextColor_(AppKit.NSColor.secondaryLabelColor())
-        lbl_hint.setFrame_(NSMakeRect(336, 584, 180, 18))
+        lbl_hint.setFrame_(NSMakeRect(336, 484, 180, 18))
         content.addSubview_(lbl_hint)
 
         # Provider Settings Box
-        self.prov_box = AppKit.NSBox.alloc().initWithFrame_(NSMakeRect(20, 240, 500, 325))
+        self.prov_box = AppKit.NSBox.alloc().initWithFrame_(NSMakeRect(20, 140, 500, 325))
         self.prov_box.setTitle_("Provider Settings")
         content.addSubview_(self.prov_box)
 
@@ -182,7 +182,7 @@ class SettingsWindowController(NSObject):
         box_view.addSubview_(btn_log)
 
         # Correction Behavior Box
-        self.behavior_box = AppKit.NSBox.alloc().initWithFrame_(NSMakeRect(20, 64, 500, 166))
+        self.behavior_box = AppKit.NSBox.alloc().initWithFrame_(NSMakeRect(20, 64, 500, 62))
         self.behavior_box.setTitle_("Correction Behavior")
         content.addSubview_(self.behavior_box)
 
@@ -191,35 +191,8 @@ class SettingsWindowController(NSObject):
         self.subs_checkbox = AppKit.NSButton.checkboxWithTitle_target_action_(
             "Replace typographic symbols (— → -, “” → "", … → ...)", self, "subsToggled:"
         )
-        self.subs_checkbox.setFrame_(NSMakeRect(16, 114, 460, 22))
+        self.subs_checkbox.setFrame_(NSMakeRect(16, 12, 460, 22))
         cbox_view.addSubview_(self.subs_checkbox)
-
-        lbl_prompt = AppKit.NSTextField.labelWithString_("System Prompt:")
-        lbl_prompt.setFrame_(NSMakeRect(16, 90, 120, 18))
-        cbox_view.addSubview_(lbl_prompt)
-
-        btn_expand = AppKit.NSButton.alloc().initWithFrame_(NSMakeRect(228, 88, 126, 22))
-        btn_expand.setTitle_("Large Editor…")
-        btn_expand.setBezelStyle_(AppKit.NSBezelStyleRecessed)
-        btn_expand.setTarget_(self)
-        btn_expand.setAction_("openPromptWindowClicked:")
-        cbox_view.addSubview_(btn_expand)
-
-        btn_reset = AppKit.NSButton.alloc().initWithFrame_(NSMakeRect(360, 88, 120, 22))
-        btn_reset.setTitle_("Reset to Default")
-        btn_reset.setBezelStyle_(AppKit.NSBezelStyleRecessed)
-        btn_reset.setTarget_(self)
-        btn_reset.setAction_("resetPromptClicked:")
-        cbox_view.addSubview_(btn_reset)
-
-        scroll = AppKit.NSScrollView.alloc().initWithFrame_(NSMakeRect(16, 12, 464, 72))
-        scroll.setHasVerticalScroller_(True)
-        scroll.setBorderType_(AppKit.NSBezelBorder)
-        self.prompt_view = AppKit.NSTextView.alloc().initWithFrame_(scroll.bounds())
-        self.prompt_view.setRichText_(False)
-        self.prompt_view.setAutomaticQuoteSubstitutionEnabled_(False)
-        scroll.setDocumentView_(self.prompt_view)
-        cbox_view.addSubview_(scroll)
 
         # Bottom buttons
         self.cancel_btn = AppKit.NSButton.alloc().initWithFrame_(NSMakeRect(330, 16, 84, 32))
@@ -276,7 +249,6 @@ class SettingsWindowController(NSObject):
         self.subs_checkbox.setState_(
             AppKit.NSControlStateValueOn if subs_enabled else AppKit.NSControlStateValueOff
         )
-        self.prompt_view.setString_(cfg.get("system_prompt", config.DEFAULT_PROMPT))
 
         self._display_provider(active_prov)
 
@@ -385,13 +357,6 @@ class SettingsWindowController(NSObject):
     def subsToggled_(self, sender):
         pass
 
-    def resetPromptClicked_(self, sender):
-        self.prompt_view.setString_(config.DEFAULT_PROMPT)
-
-    def openPromptWindowClicked_(self, sender):
-        if self.app:
-            self.app._open_prompt_window()
-
     def openConfigClicked_(self, sender):
         if self.app:
             self.app._open_config(None)
@@ -425,9 +390,6 @@ class SettingsWindowController(NSObject):
         self.app.cfg["substitutions_enabled"] = bool(
             self.subs_checkbox.state() == AppKit.NSControlStateValueOn
         )
-        new_prompt = str(self.prompt_view.string()).strip()
-        if new_prompt:
-            self.app.cfg["system_prompt"] = new_prompt
 
         config.save(self.app.cfg)
         self.window.orderOut_(None)
